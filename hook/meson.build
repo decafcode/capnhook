@@ -5,6 +5,8 @@ hook_lib = static_library(
     sources : [
         'hr.c',
         'hr.h',
+        'iobuf.c',
+        'iobuf.h',
         'pe.c',
         'pe.h',
         'peb.c',
