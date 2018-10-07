@@ -7,6 +7,8 @@ hook_lib = static_library(
         'pe.h',
         'peb.c',
         'peb.h',
+        'table.c',
+        'table.h',
     ],
 )
 
