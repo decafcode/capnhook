@@ -7,6 +7,8 @@ hook_lib = static_library(
         'hr.h',
         'iobuf.c',
         'iobuf.h',
+        'iohook.c',
+        'iohook.h',
         'pe.c',
         'pe.h',
         'peb.c',
