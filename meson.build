@@ -17,4 +17,5 @@ add_project_link_arguments(
 inc = include_directories('.')
 
 subdir('hook')
+subdir('hooklib')
 subdir('inject')
