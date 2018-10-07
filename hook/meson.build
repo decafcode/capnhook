@@ -3,6 +3,8 @@ hook_lib = static_library(
     include_directories : inc,
     c_pch : '../precompiled.h',
     sources : [
+        'hr.c',
+        'hr.h',
         'pe.c',
         'pe.h',
         'peb.c',
