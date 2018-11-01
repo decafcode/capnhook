@@ -3,6 +3,8 @@ hook_lib = static_library(
     include_directories : inc,
     c_pch : '../precompiled.h',
     sources : [
+        'args.c',
+        'args.h',
         'com-proxy.c',
         'com-proxy.h',
         'hr.c',
