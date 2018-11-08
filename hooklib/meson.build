@@ -5,6 +5,8 @@ hooklib_lib = static_library(
     sources : [
         'serial.c',
         'serial.h',
+        'uart.c',
+        'uart.h',
     ],
 )
 
