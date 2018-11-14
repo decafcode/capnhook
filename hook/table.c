@@ -93,7 +93,7 @@ static void hook_table_apply_to_iid(
             sym = &syms[j];
 
             if (hook_table_match_proc(&iate, sym)) {
-                if (sym->link != NULL) {
+                if (sym->link != NULL && *sym->link == NULL) {
                     *sym->link = *iate.ppointer;
                 }
 
