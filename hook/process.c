@@ -16,7 +16,7 @@ static bool thread_match_startup(
 {
 #ifdef __amd64
     return  ctx->Rip == (DWORD64) ntstart &&
-            ctx->Rax == (DWORD64) exe_entry;
+            ctx->Rcx == (DWORD64) exe_entry;
 #else
     return  ctx->Eip == (DWORD) ntstart &&
             ctx->Eax == (DWORD) exe_entry;
@@ -29,8 +29,8 @@ static void thread_patch_startup(
         CONTEXT *ctx)
 {
 #ifdef __amd64
-    *orig_entry = (void *) ctx->Rax;
-    ctx->Rax = (DWORD64) new_entry;
+    *orig_entry = (void *) ctx->Rcx;
+    ctx->Rcx = (DWORD64) new_entry;
 #else
     *orig_entry = (void *) ctx->Eax;
     ctx->Eax = (DWORD) new_entry;
