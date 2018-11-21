@@ -525,11 +525,14 @@ static HRESULT iohook_invoke_real_ioctl(struct irp *irp)
             &nread,
             irp->ovl);
 
+    /* Must be propagated even if there is an error, see
+       iohook_DeviceIoControl. */
+
+    irp->read.pos = nread;
+
     if (!ok) {
         return HRESULT_FROM_WIN32(GetLastError());
     }
-
-    irp->read.pos = nread;
 
     return S_OK;
 }
@@ -905,12 +908,22 @@ static BOOL WINAPI iohook_DeviceIoControl(
 
     hr = iohook_invoke_next(&irp);
 
-    if (FAILED(hr)) {
-        return hr_propagate_win32(hr, FALSE);
-    }
-
     assert(irp.write.pos <= irp.write.nbytes);
     assert(irp.read.pos <= irp.read.nbytes);
+
+    if (FAILED(hr)) {
+        /* Special case: ERROR_MORE_DATA requires this out parameter to be
+           propagated, per MSDN. All ioctls in the entire process that go via
+           the win32 API (as opposed to the NTDLL API) get redirected through
+           iohook, and the Windows XP version of DirectSound is known to rely
+           on this behavior. */
+
+        if (lpBytesReturned != NULL) {
+            *lpBytesReturned = (DWORD) irp.read.pos;
+        }
+
+        return hr_propagate_win32(hr, FALSE);
+    }
 
     return iohook_overlapped_result(
             lpBytesReturned,
