@@ -4,6 +4,8 @@
 #include <devioctl.h>
 #include <ntddser.h>
 
+#include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "hook/hr.h"

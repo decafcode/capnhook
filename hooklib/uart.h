@@ -3,6 +3,7 @@
 #include <windows.h>
 
 #include <ntdef.h>
+#include <devioctl.h>
 #include <ntddser.h>
 
 #include <stdbool.h>

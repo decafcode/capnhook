@@ -1,4 +1,10 @@
+#define WIN32_NO_STATUS
 #include <windows.h>
+#undef WIN32_NO_STATUS
+#include <winternl.h>
+
+#include <winnt.h>
+#include <devioctl.h>
 #include <ntstatus.h>
 
 #include <assert.h>
