@@ -1,4 +1,5 @@
 #define WIN32_NO_STATUS
+/* See precompiled.h for more information */
 #include <windows.h>
 #undef WIN32_NO_STATUS
 #include <winternl.h>

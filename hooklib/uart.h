@@ -2,7 +2,11 @@
 
 #include <windows.h>
 
+#ifdef __GNUC__
 #include <ntdef.h>
+#else
+#include <winnt.h>
+#endif
 #include <devioctl.h>
 #include <ntddser.h>
 
