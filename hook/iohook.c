@@ -915,9 +915,6 @@ static BOOL WINAPI iohook_DeviceIoControl(
 
     hr = iohook_invoke_next(&irp);
 
-    assert(irp.write.pos <= irp.write.nbytes);
-    assert(irp.read.pos <= irp.read.nbytes);
-
     if (FAILED(hr)) {
         /* Special case: ERROR_MORE_DATA requires this out parameter to be
            propagated, per MSDN. All ioctls in the entire process that go via
