@@ -116,7 +116,7 @@ HRESULT options_target_cmdline(const struct options *opt, char **out)
     char *pos;
     size_t nchars;
     size_t len;
-    size_t i;
+    int i;
 
     assert(opt != NULL);
     assert(out != NULL);
