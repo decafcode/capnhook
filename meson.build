@@ -1,4 +1,4 @@
-project('capnhook', 'c', version: '0.1.0')
+project('capnhook', 'c', version: '0.2.2')
 
 add_project_arguments(
     '-DCOBJMACROS',
