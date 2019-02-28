@@ -125,6 +125,7 @@ static HRESULT inject_dll(HANDLE process, const char *dll_name)
     void *remote_addr;
     HANDLE remote_thread;
     DWORD found;
+    DWORD result;
     HRESULT hr;
     BOOL ok;
 
@@ -186,11 +187,38 @@ static HRESULT inject_dll(HANDLE process, const char *dll_name)
         goto end;
     }
 
+    result = WaitForSingleObject(remote_thread, INFINITE);
+
+    if (result != WAIT_OBJECT_0) {
+        hr = HRESULT_FROM_WIN32(GetLastError());
+        fprintf(stderr, "WaitForSingleObject failed: %x\n", (int) hr);
+
+        goto end;
+    }
+
+    /* Reusing `result` var for something unrelated.. ech. sloppy. */
+    ok = GetExitCodeThread(remote_thread, &result);
+
+    if (!ok) {
+        hr = HRESULT_FROM_WIN32(GetLastError());
+        fprintf(stderr, "GetExitCodeThread failed: %x\n", (int) hr);
+
+        goto end;
+    }
+
+    if (result == 0) {
+        hr = E_FAIL;
+        fprintf(stderr,
+                "%s: DLL failed to load inside target process\n",
+                dll_name);
+
+        goto end;
+    }
+
     hr = S_OK;
 
 end:
     if (remote_thread != NULL) {
-        WaitForSingleObject(remote_thread, INFINITE);
         CloseHandle(remote_thread);
     }
 
