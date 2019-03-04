@@ -9,6 +9,9 @@
 #include "hook/peb.h"
 #include "hook/table.h"
 
+static const char apiset_prefix[] = "api-ms-win-core-";
+static const size_t apiset_prefix_len = sizeof(apiset_prefix) - 1;
+
 static void hook_table_apply_to_all(
         const char *depname,
         const struct hook_symbol *syms,
@@ -19,6 +22,11 @@ static void hook_table_apply_to_iid(
         const pe_iid_t *iid,
         const struct hook_symbol *syms,
         size_t nsyms);
+
+static bool hook_table_match_module(
+        HMODULE target,
+        const char *iid_name,
+        const char *depname);
 
 static bool hook_table_match_proc(
         const struct pe_iat_entry *iate,
@@ -68,7 +76,7 @@ void hook_table_apply(
                 iid = pe_iid_get_next(target, iid)) {
             iid_name = pe_iid_get_name(target, iid);
 
-            if (_stricmp(iid_name, depname) == 0) {
+            if (hook_table_match_module(target, iid_name, depname)) {
                 hook_table_apply_to_iid(target, iid, syms, nsyms);
             }
         }
@@ -101,6 +109,57 @@ static void hook_table_apply_to_iid(
             }
         }
     }
+}
+
+static bool hook_table_match_module(
+        HMODULE target,
+        const char *iid_name,
+        const char *depname)
+{
+    HMODULE kernel32;
+    int result;
+
+    /* OK, first do a straightforward match on the imported DLL name versus
+       the hook table DLL name. If it succeeds then we're done. */
+
+    result = _stricmp(iid_name, depname);
+
+    if (result == 0) {
+        return true;
+    }
+
+    /* If it failed then we have to check if this hook table targets kernel32.
+       We have to do some special processing around API sets in that case, so
+       stop here if kernel32 is not the subject of this hook table. */
+
+    if (_stricmp(depname, "kernel32.dll") != 0) {
+        return false;
+    }
+
+    /* There isn't really any good test for whether a DLL import wants a
+       concrete DLL or an abstract DLL providing a particular Windows API-set,
+       so we use a hacky check against the prefix. If the imported DLL name
+       looks like an apiset then we'll allow kernel32 hook tables to apply. */
+
+    result = _strnicmp(iid_name, apiset_prefix, apiset_prefix_len);
+
+    if (result != 0) {
+        return false;
+    }
+
+    /* ... EXCEPT for the case where we're hooking all DLLs loaded into the
+       process and we are currently examining kernel32 itself. In that case
+       there's some weird reference loops issues I don't entirely understand
+       right now. To avoid those, we just don't apply kernel32 hook tables to
+       kernel32 itself. */
+
+    kernel32 = GetModuleHandleW(L"kernel32.dll");
+
+    if (target == kernel32) {
+        return false;
+    }
+
+    return true;
 }
 
 static bool hook_table_match_proc(
