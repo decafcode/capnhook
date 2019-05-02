@@ -1,10 +1,7 @@
 executable(
     'inject',
     include_directories : inc,
-    c_pch : [
-        '../precompiled.c',
-        '../precompiled.h',
-    ],
+    c_pch : '../precompiled.h',
     sources : [
         'debug.c',
         'debug.h',
