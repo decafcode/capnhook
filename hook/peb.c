@@ -7,7 +7,7 @@
 
 static const PEB *peb_get(void)
 {
-#ifdef __amd64
+#ifdef _M_AMD64
     return (const PEB *) __readgsqword(0x60);
 #else
     return (const PEB *) __readfsdword(0x30);

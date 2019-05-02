@@ -14,7 +14,7 @@ static bool thread_match_startup(
         void *ntstart,
         void *exe_entry)
 {
-#ifdef __amd64
+#ifdef _M_AMD64
     return  ctx->Rip == (DWORD64) ntstart &&
             ctx->Rcx == (DWORD64) exe_entry;
 #else
@@ -28,7 +28,7 @@ static void thread_patch_startup(
         process_entry_t *orig_entry,
         CONTEXT *ctx)
 {
-#ifdef __amd64
+#ifdef _M_AMD64
     *orig_entry = (void *) ctx->Rcx;
     ctx->Rcx = (DWORD64) new_entry;
 #else
@@ -94,7 +94,7 @@ static HRESULT process_hijack_try_thread(
     }
 
     memset(&ctx, 0, sizeof(ctx));
-#ifdef __amd64
+#ifdef _M_AMD64
     ctx.ContextFlags = CONTEXT_AMD64 | CONTEXT_FULL;
 #else
     ctx.ContextFlags = CONTEXT_i386 | CONTEXT_FULL;
