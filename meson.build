@@ -8,7 +8,6 @@ add_project_arguments(
 
 if meson.get_compiler('c').get_argument_syntax() != 'msvc'
     add_project_arguments(
-        '-Wall',
         '-ffunction-sections',
         '-fdata-sections',
         language: 'c',
