@@ -124,6 +124,31 @@ HRESULT iobuf_read_be32(struct const_iobuf *src, uint32_t *out)
     return S_OK;
 }
 
+HRESULT iobuf_read_be64(struct const_iobuf *src, uint64_t *out)
+{
+    uint64_t value;
+
+    assert(src != NULL);
+    assert(out != NULL);
+
+    if (src->pos + sizeof(uint64_t) > src->nbytes) {
+        return HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
+    }
+
+    value  = ((uint64_t) src->bytes[src->pos++]) << 56;
+    value |= ((uint64_t) src->bytes[src->pos++]) << 48;
+    value |= ((uint64_t) src->bytes[src->pos++]) << 40;
+    value |= ((uint64_t) src->bytes[src->pos++]) << 32;
+    value |= ((uint64_t) src->bytes[src->pos++]) << 24;
+    value |= ((uint64_t) src->bytes[src->pos++]) << 16;
+    value |= ((uint64_t) src->bytes[src->pos++]) << 8;
+    value |= ((uint64_t) src->bytes[src->pos++]);
+
+    *out = value;
+
+    return S_OK;
+}
+
 HRESULT iobuf_read_le16(struct const_iobuf *src, uint16_t *out)
 {
     uint16_t value;
@@ -158,6 +183,31 @@ HRESULT iobuf_read_le32(struct const_iobuf *src, uint32_t *out)
     value |= src->bytes[src->pos++] << 8;
     value |= src->bytes[src->pos++] << 16;
     value |= src->bytes[src->pos++] << 24;
+
+    *out = value;
+
+    return S_OK;
+}
+
+HRESULT iobuf_read_le64(struct const_iobuf *src, uint64_t *out)
+{
+    uint64_t value;
+
+    assert(src != NULL);
+    assert(out != NULL);
+
+    if (src->pos + sizeof(uint64_t) > src->nbytes) {
+        return HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
+    }
+
+    value  = ((uint64_t) src->bytes[src->pos++]);
+    value |= ((uint64_t) src->bytes[src->pos++]) << 8;
+    value |= ((uint64_t) src->bytes[src->pos++]) << 16;
+    value |= ((uint64_t) src->bytes[src->pos++]) << 24;
+    value |= ((uint64_t) src->bytes[src->pos++]) << 32;
+    value |= ((uint64_t) src->bytes[src->pos++]) << 40;
+    value |= ((uint64_t) src->bytes[src->pos++]) << 48;
+    value |= ((uint64_t) src->bytes[src->pos++]) << 56;
 
     *out = value;
 
@@ -222,6 +272,26 @@ HRESULT iobuf_write_be32(struct iobuf *dest, uint32_t value)
     return S_OK;
 }
 
+HRESULT iobuf_write_be64(struct iobuf *dest, uint64_t value)
+{
+    assert(dest != NULL);
+
+    if (dest->pos + sizeof(uint64_t) > dest->nbytes) {
+        return HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
+    }
+
+    dest->bytes[dest->pos++] = value >> 56;
+    dest->bytes[dest->pos++] = value >> 48;
+    dest->bytes[dest->pos++] = value >> 40;
+    dest->bytes[dest->pos++] = value >> 32;
+    dest->bytes[dest->pos++] = value >> 24;
+    dest->bytes[dest->pos++] = value >> 16;
+    dest->bytes[dest->pos++] = value >> 8;
+    dest->bytes[dest->pos++] = value;
+
+    return S_OK;
+}
+
 HRESULT iobuf_write_le16(struct iobuf *dest, uint16_t value)
 {
     assert(dest != NULL);
@@ -248,6 +318,26 @@ HRESULT iobuf_write_le32(struct iobuf *dest, uint32_t value)
     dest->bytes[dest->pos++] = value >> 8;
     dest->bytes[dest->pos++] = value >> 16;
     dest->bytes[dest->pos++] = value >> 24;
+
+    return S_OK;
+}
+
+HRESULT iobuf_write_le64(struct iobuf *dest, uint64_t value)
+{
+    assert(dest != NULL);
+
+    if (dest->pos + sizeof(uint64_t) > dest->nbytes) {
+        return HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
+    }
+
+    dest->bytes[dest->pos++] = value;
+    dest->bytes[dest->pos++] = value >> 8;
+    dest->bytes[dest->pos++] = value >> 16;
+    dest->bytes[dest->pos++] = value >> 24;
+    dest->bytes[dest->pos++] = value >> 32;
+    dest->bytes[dest->pos++] = value >> 40;
+    dest->bytes[dest->pos++] = value >> 48;
+    dest->bytes[dest->pos++] = value >> 56;
 
     return S_OK;
 }
