@@ -277,6 +277,7 @@ static void iohook_init(void)
     iohook_initted = true;
 }
 
+// Deprecated
 HANDLE iohook_open_dummy_fd(void)
 {
     iohook_init();
@@ -289,6 +290,33 @@ HANDLE iohook_open_dummy_fd(void)
             OPEN_EXISTING,
             FILE_FLAG_OVERLAPPED,
             NULL);
+}
+
+HRESULT iohook_open_nul_fd(HANDLE *out)
+{
+    HANDLE fd;
+
+    assert(out != NULL);
+
+    *out = NULL;
+    iohook_init();
+
+    fd = next_CreateFileW(
+            L"NUL",
+            GENERIC_READ | GENERIC_WRITE,
+            FILE_SHARE_READ | FILE_SHARE_WRITE,
+            NULL,
+            OPEN_EXISTING,
+            FILE_FLAG_OVERLAPPED,
+            NULL);
+
+    if (fd == NULL) {
+        return HRESULT_FROM_WIN32(GetLastError());
+    }
+
+    *out = fd;
+
+    return S_OK;
 }
 
 HRESULT iohook_push_handler(iohook_fn_t fn)
