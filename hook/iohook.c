@@ -224,6 +224,9 @@ static void iohook_init(void)
         return;
     }
 
+    InitializeCriticalSection(&iohook_lock);
+    EnterCriticalSection(&iohook_lock);
+
     /* Splice iohook into IAT entries referencing Win32 I/O APIs */
 
     hook_table_apply(
@@ -273,8 +276,9 @@ static void iohook_init(void)
                 "SetFilePointerEx");
     }
 
-    InitializeCriticalSection(&iohook_lock);
     iohook_initted = true;
+
+    LeaveCriticalSection(&iohook_lock);
 }
 
 // Deprecated
@@ -378,10 +382,10 @@ HRESULT iohook_invoke_next(struct irp *irp)
     HRESULT hr;
 
     assert(irp != NULL);
-    assert(iohook_initted);
 
     EnterCriticalSection(&iohook_lock);
 
+    assert(iohook_initted);
     assert(irp->next_handler <= iohook_nhandlers);
 
     if (irp->next_handler < iohook_nhandlers) {
