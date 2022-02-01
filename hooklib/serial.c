@@ -349,15 +349,15 @@ static BOOL WINAPI my_GetCommState(HANDLE fd, DCB *dcb)
         dcb->fDsrSensitivity = 1;
     }
 
-    if (handflow.ControlHandShake & SERIAL_XOFF_CONTINUE) {
+    if (handflow.FlowReplace & SERIAL_XOFF_CONTINUE) {
         dcb->fTXContinueOnXoff = 1;
     }
 
-    if (handflow.ControlHandShake & SERIAL_RTS_CONTROL) {
+    if (handflow.FlowReplace & SERIAL_RTS_CONTROL) {
         dcb->fRtsControl = RTS_CONTROL_ENABLE;
     }
 
-    if (handflow.ControlHandShake & SERIAL_RTS_HANDSHAKE) {
+    if (handflow.FlowReplace & SERIAL_RTS_HANDSHAKE) {
         dcb->fRtsControl = RTS_CONTROL_HANDSHAKE;
     }
 
@@ -365,11 +365,11 @@ static BOOL WINAPI my_GetCommState(HANDLE fd, DCB *dcb)
         dcb->fAbortOnError = 1;
     }
 
-    if (handflow.ControlHandShake & SERIAL_ERROR_CHAR) {
+    if (handflow.FlowReplace & SERIAL_ERROR_CHAR) {
         dcb->fErrorChar = 1;
     }
 
-    if (handflow.ControlHandShake & SERIAL_NULL_STRIPPING) {
+    if (handflow.FlowReplace & SERIAL_NULL_STRIPPING) {
         dcb->fNull = 1;
     }
 
@@ -526,7 +526,7 @@ static BOOL WINAPI my_SetCommState(HANDLE fd, const DCB *dcb)
     }
 
     if (dcb->fTXContinueOnXoff) {
-        handflow.ControlHandShake |= SERIAL_XOFF_CONTINUE;
+        handflow.FlowReplace |= SERIAL_XOFF_CONTINUE;
     }
 
     switch (dcb->fRtsControl) {
@@ -534,12 +534,12 @@ static BOOL WINAPI my_SetCommState(HANDLE fd, const DCB *dcb)
         break;
 
     case RTS_CONTROL_ENABLE:
-        handflow.ControlHandShake |= SERIAL_RTS_CONTROL;
+        handflow.FlowReplace |= SERIAL_RTS_CONTROL;
 
         break;
 
     case RTS_CONTROL_HANDSHAKE:
-        handflow.ControlHandShake |= SERIAL_RTS_HANDSHAKE;
+        handflow.FlowReplace |= SERIAL_RTS_HANDSHAKE;
 
         break;
 
@@ -547,6 +547,14 @@ static BOOL WINAPI my_SetCommState(HANDLE fd, const DCB *dcb)
         SetLastError(ERROR_INVALID_PARAMETER);
 
         return FALSE;
+    }
+
+    if (dcb->fErrorChar) {
+        handflow.FlowReplace |= SERIAL_ERROR_CHAR;
+    }
+
+    if (dcb->fNull) {
+        handflow.FlowReplace |= SERIAL_NULL_STRIPPING;
     }
 
     memset(&line, 0, sizeof(line));
