@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include "hook/iobuf.h"
+#include "iohook/iobuf.h"
 
 void iobuf_flip(struct const_iobuf *child, struct iobuf *parent)
 {

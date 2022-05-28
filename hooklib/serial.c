@@ -13,10 +13,11 @@
 #include <string.h>
 
 #include "hook/hr.h"
-#include "hook/iohook.h"
 #include "hook/table.h"
 
 #include "hooklib/serial.h"
+
+#include "iohook/iohook.h"
 
 /* RS232 API hooks */
 

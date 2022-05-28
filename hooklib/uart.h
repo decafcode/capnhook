@@ -12,8 +12,8 @@
 
 #include <stdbool.h>
 
-#include "hook/iobuf.h"
-#include "hook/iohook.h"
+#include "iohook/iobuf.h"
+#include "iohook/iohook.h"
 
 struct uart {
     HANDLE fd;

@@ -12,10 +12,10 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "hook/iobuf.h"
-#include "hook/iohook.h"
-
 #include "hooklib/uart.h"
+
+#include "iohook/iobuf.h"
+#include "iohook/iohook.h"
 
 static HRESULT uart_handle_open(struct uart *uart, struct irp *irp);
 static HRESULT uart_handle_close(struct uart *uart, struct irp *irp);

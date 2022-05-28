@@ -8,32 +8,16 @@
 #include <devioctl.h>
 #include <ntstatus.h>
 
-#include <assert.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "hook/hr.h"
-#include "hook/iohook.h"
 #include "hook/table.h"
 
-/* Helpers */
+#include "iohook/async.h"
+#include "iohook/chain.h"
+#include "iohook/file.h"
 
-static void iohook_init(void);
-static BOOL iohook_overlapped_result(
-        uint32_t *syncout,
-        OVERLAPPED *ovl,
-        uint32_t value);
-
-static HRESULT iohook_invoke_real(struct irp *irp);
-static HRESULT iohook_invoke_real_open(struct irp *irp);
-static HRESULT iohook_invoke_real_close(struct irp *irp);
-static HRESULT iohook_invoke_real_read(struct irp *irp);
-static HRESULT iohook_invoke_real_write(struct irp *irp);
-static HRESULT iohook_invoke_real_seek(struct irp *irp);
-static HRESULT iohook_invoke_real_fsync(struct irp *irp);
-static HRESULT iohook_invoke_real_ioctl(struct irp *irp);
+#include <assert.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 /* API hooks. We take some liberties with function signatures here (e.g.
    stdint.h types instead of DWORD and LARGE_INTEGER et al). */
@@ -198,34 +182,9 @@ static const struct hook_symbol iohook_kernel32_syms[] = {
     },
 };
 
-static const iohook_fn_t iohook_real_handlers[] = {
-    [IRP_OP_OPEN]   = iohook_invoke_real_open,
-    [IRP_OP_CLOSE]  = iohook_invoke_real_close,
-    [IRP_OP_READ]   = iohook_invoke_real_read,
-    [IRP_OP_WRITE]  = iohook_invoke_real_write,
-    [IRP_OP_SEEK]   = iohook_invoke_real_seek,
-    [IRP_OP_FSYNC]  = iohook_invoke_real_fsync,
-    [IRP_OP_IOCTL]  = iohook_invoke_real_ioctl,
-};
-
-static bool iohook_initted;
-static CRITICAL_SECTION iohook_lock;
-static iohook_fn_t *iohook_handlers;
-static size_t iohook_nhandlers;
-
-static void iohook_init(void)
+void iohook_file_hook_apis(void)
 {
     HMODULE kernel32;
-
-    /* Permit repeated initializations. This isn't atomic because the whole IAT
-       insertion dance is extremely non-atomic to begin with. */
-
-    if (iohook_initted) {
-        return;
-    }
-
-    InitializeCriticalSection(&iohook_lock);
-    EnterCriticalSection(&iohook_lock);
 
     /* Splice iohook into IAT entries referencing Win32 I/O APIs */
 
@@ -275,35 +234,15 @@ static void iohook_init(void)
                 kernel32,
                 "SetFilePointerEx");
     }
-
-    iohook_initted = true;
-
-    LeaveCriticalSection(&iohook_lock);
 }
 
-// Deprecated
-HANDLE iohook_open_dummy_fd(void)
-{
-    iohook_init();
-
-    return next_CreateFileW(
-            L"NUL",
-            GENERIC_READ | GENERIC_WRITE,
-            FILE_SHARE_READ | FILE_SHARE_WRITE,
-            NULL,
-            OPEN_EXISTING,
-            FILE_FLAG_OVERLAPPED,
-            NULL);
-}
-
-HRESULT iohook_open_nul_fd(HANDLE *out)
+HRESULT iohook_file_open_nul_fd(HANDLE *out)
 {
     HANDLE fd;
 
     assert(out != NULL);
 
     *out = NULL;
-    iohook_init();
 
     fd = next_CreateFileW(
             L"NUL",
@@ -323,105 +262,7 @@ HRESULT iohook_open_nul_fd(HANDLE *out)
     return S_OK;
 }
 
-HRESULT iohook_push_handler(iohook_fn_t fn)
-{
-    iohook_fn_t *new_array;
-    size_t new_size;
-    HRESULT hr;
-
-    assert(fn != NULL);
-
-    iohook_init();
-    EnterCriticalSection(&iohook_lock);
-
-    new_size = iohook_nhandlers + 1;
-    new_array = realloc(iohook_handlers, new_size * sizeof(iohook_fn_t));
-
-    if (new_array != NULL) {
-        iohook_handlers = new_array;
-        iohook_handlers[iohook_nhandlers++] = fn;
-        hr = S_OK;
-    } else {
-        hr = E_OUTOFMEMORY;
-    }
-
-    LeaveCriticalSection(&iohook_lock);
-
-    return hr;
-}
-
-static BOOL iohook_overlapped_result(
-        uint32_t *syncout,
-        OVERLAPPED *ovl,
-        uint32_t value)
-{
-    if (ovl != NULL) {
-        ovl->Internal = STATUS_SUCCESS;
-        ovl->InternalHigh = value;
-
-        if (ovl->hEvent != NULL) {
-            SetEvent(ovl->hEvent);
-        }
-    }
-
-    if (syncout != NULL) {
-        *syncout = value;
-        SetLastError(ERROR_SUCCESS);
-
-        return TRUE;
-    } else {
-        SetLastError(ERROR_IO_PENDING);
-
-        return FALSE;
-    }
-}
-
-HRESULT iohook_invoke_next(struct irp *irp)
-{
-    iohook_fn_t handler;
-    HRESULT hr;
-
-    assert(irp != NULL);
-
-    EnterCriticalSection(&iohook_lock);
-
-    assert(iohook_initted);
-    assert(irp->next_handler <= iohook_nhandlers);
-
-    if (irp->next_handler < iohook_nhandlers) {
-        handler = iohook_handlers[irp->next_handler];
-        irp->next_handler++;
-    } else {
-        handler = iohook_invoke_real;
-        irp->next_handler = (size_t) -1;
-    }
-
-    LeaveCriticalSection(&iohook_lock);
-
-    hr = handler(irp);
-
-    if (FAILED(hr)) {
-        irp->next_handler = (size_t) -1;
-    }
-
-    return hr;
-}
-
-static HRESULT iohook_invoke_real(struct irp *irp)
-{
-    iohook_fn_t handler;
-
-    assert(irp != NULL);
-    assert(irp->op < _countof(iohook_real_handlers));
-
-    handler = iohook_real_handlers[irp->op];
-
-    assert(handler != NULL);
-
-    return handler(irp);
-}
-
-static HRESULT iohook_invoke_real_open(struct irp *irp)
+HRESULT iohook_invoke_real_open(struct irp *irp)
 {
     HANDLE fd;
 
@@ -445,7 +286,7 @@ static HRESULT iohook_invoke_real_open(struct irp *irp)
     return S_OK;
 }
 
-static HRESULT iohook_invoke_real_close(struct irp *irp)
+HRESULT iohook_invoke_real_close(struct irp *irp)
 {
     BOOL ok;
 
@@ -460,7 +301,7 @@ static HRESULT iohook_invoke_real_close(struct irp *irp)
     return S_OK;
 }
 
-static HRESULT iohook_invoke_real_read(struct irp *irp)
+HRESULT iohook_invoke_real_read(struct irp *irp)
 {
     uint32_t nread;
     BOOL ok;
@@ -483,7 +324,7 @@ static HRESULT iohook_invoke_real_read(struct irp *irp)
     return S_OK;
 }
 
-static HRESULT iohook_invoke_real_write(struct irp *irp)
+HRESULT iohook_invoke_real_write(struct irp *irp)
 {
     uint32_t nwrit;
     BOOL ok;
@@ -506,7 +347,7 @@ static HRESULT iohook_invoke_real_write(struct irp *irp)
     return S_OK;
 }
 
-static HRESULT iohook_invoke_real_seek(struct irp *irp)
+HRESULT iohook_invoke_real_seek(struct irp *irp)
 {
     BOOL ok;
 
@@ -525,7 +366,7 @@ static HRESULT iohook_invoke_real_seek(struct irp *irp)
     return S_OK;
 }
 
-static HRESULT iohook_invoke_real_fsync(struct irp *irp)
+HRESULT iohook_invoke_real_fsync(struct irp *irp)
 {
     BOOL ok;
 
@@ -540,7 +381,7 @@ static HRESULT iohook_invoke_real_fsync(struct irp *irp)
     return S_OK;
 }
 
-static HRESULT iohook_invoke_real_ioctl(struct irp *irp)
+HRESULT iohook_invoke_real_ioctl(struct irp *irp)
 {
     uint32_t nread;
     BOOL ok;
@@ -657,7 +498,7 @@ static HANDLE WINAPI iohook_CreateFileW(
     irp.open_flags = dwFlagsAndAttributes;
     irp.open_tmpl = hTemplateFile;
 
-    hr = iohook_invoke_next(&irp);
+    hr = iohook_chain_invoke_next(&irp);
 
     if (FAILED(hr)) {
         return hr_propagate_win32(hr, INVALID_HANDLE_VALUE);
@@ -683,7 +524,7 @@ static BOOL WINAPI iohook_CloseHandle(HANDLE hFile)
     irp.op = IRP_OP_CLOSE;
     irp.fd = hFile;
 
-    hr = iohook_invoke_next(&irp);
+    hr = iohook_chain_invoke_next(&irp);
 
     if (FAILED(hr)) {
         return hr_propagate_win32(hr, FALSE);
@@ -728,7 +569,7 @@ static BOOL WINAPI iohook_ReadFile(
     irp.read.nbytes = nNumberOfBytesToRead;
     irp.read.pos = 0;
 
-    hr = iohook_invoke_next(&irp);
+    hr = iohook_chain_invoke_next(&irp);
 
     if (FAILED(hr)) {
         return hr_propagate_win32(hr, FALSE);
@@ -776,7 +617,7 @@ static BOOL WINAPI iohook_WriteFile(
     irp.write.nbytes = nNumberOfBytesToWrite;
     irp.write.pos = 0;
 
-    hr = iohook_invoke_next(&irp);
+    hr = iohook_chain_invoke_next(&irp);
 
     if (FAILED(hr)) {
         return hr_propagate_win32(hr, FALSE);
@@ -821,7 +662,7 @@ static DWORD WINAPI iohook_SetFilePointer(
         irp.seek_offset =   ( int64_t) lDistanceToMove;
     }
 
-    hr = iohook_invoke_next(&irp);
+    hr = iohook_chain_invoke_next(&irp);
 
     if (FAILED(hr)) {
         return hr_propagate_win32(hr, INVALID_SET_FILE_POINTER);
@@ -859,7 +700,7 @@ static BOOL WINAPI iohook_SetFilePointerEx(
     irp.seek_offset = liDistanceToMove;
     irp.seek_origin = dwMoveMethod;
 
-    hr = iohook_invoke_next(&irp);
+    hr = iohook_chain_invoke_next(&irp);
 
     if (FAILED(hr)) {
         return hr_propagate_win32(hr, FALSE);
@@ -889,7 +730,7 @@ static BOOL WINAPI iohook_FlushFileBuffers(HANDLE hFile)
     irp.op = IRP_OP_FSYNC;
     irp.fd = hFile;
 
-    hr = iohook_invoke_next(&irp);
+    hr = iohook_chain_invoke_next(&irp);
 
     if (FAILED(hr)) {
         return hr_propagate_win32(hr, FALSE);
@@ -945,7 +786,7 @@ static BOOL WINAPI iohook_DeviceIoControl(
         irp.read.nbytes = nOutBufferSize;
     }
 
-    hr = iohook_invoke_next(&irp);
+    hr = iohook_chain_invoke_next(&irp);
 
     if (FAILED(hr)) {
         /* Special case: ERROR_MORE_DATA requires this out parameter to be
