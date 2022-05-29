@@ -11,18 +11,37 @@
 #include "iohook/chain.h"
 #include "iohook/file.h"
 #include "iohook/iohook.h"
+#include "iohook/socket.h"
 
 static void iohook_init(void);
 static HRESULT iohook_invoke_real(struct irp *irp);
 
 static const iohook_fn_t iohook_real_handlers[] = {
-    [IRP_OP_OPEN]   = iohook_invoke_real_open,
-    [IRP_OP_CLOSE]  = iohook_invoke_real_close,
-    [IRP_OP_READ]   = iohook_invoke_real_read,
-    [IRP_OP_WRITE]  = iohook_invoke_real_write,
-    [IRP_OP_SEEK]   = iohook_invoke_real_seek,
-    [IRP_OP_FSYNC]  = iohook_invoke_real_fsync,
-    [IRP_OP_IOCTL]  = iohook_invoke_real_ioctl,
+    /* File ops */
+
+    [IRP_OP_OPEN]           = iohook_invoke_real_open,
+    [IRP_OP_CLOSE]          = iohook_invoke_real_close,
+    [IRP_OP_READ]           = iohook_invoke_real_read,
+    [IRP_OP_WRITE]          = iohook_invoke_real_write,
+    [IRP_OP_SEEK]           = iohook_invoke_real_seek,
+    [IRP_OP_FSYNC]          = iohook_invoke_real_fsync,
+    [IRP_OP_IOCTL]          = iohook_invoke_real_ioctl,
+
+    /* Socket ops */
+
+    [IRP_OP_SOCKET]         = iohook_invoke_real_socket,
+    [IRP_OP_CLOSESOCKET]    = iohook_invoke_real_closesocket,
+    [IRP_OP_BIND]           = iohook_invoke_real_bind,
+    [IRP_OP_CONNECT]        = iohook_invoke_real_connect,
+    [IRP_OP_LISTEN]         = iohook_invoke_real_listen,
+    [IRP_OP_ACCEPT]         = iohook_invoke_real_accept,
+    [IRP_OP_RECVFROM]       = iohook_invoke_real_recvfrom,
+    [IRP_OP_SENDTO]         = iohook_invoke_real_sendto,
+    [IRP_OP_IOCTLSOCKET]    = iohook_invoke_real_ioctlsocket,
+    [IRP_OP_GETSOCKNAME]    = iohook_invoke_real_getsockname,
+    [IRP_OP_GETPEERNAME]    = iohook_invoke_real_getpeername,
+    [IRP_OP_GETSOCKOPT]     = iohook_invoke_real_getsockopt,
+    [IRP_OP_SETSOCKOPT]     = iohook_invoke_real_setsockopt,
 };
 
 static bool iohook_initted;
@@ -38,6 +57,7 @@ static void iohook_init(void)
 
     iohook_chain_init();
     iohook_file_hook_apis();
+    iohook_socket_hook_apis();
     iohook_chain_push_handler(iohook_invoke_real);
     iohook_initted = true;
 }

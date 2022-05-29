@@ -7,6 +7,7 @@
 #define WIN32_NO_STATUS
 #include <windows.h>
 #undef WIN32_NO_STATUS
+#include <winsock2.h>
 #include <winternl.h>
 #include <tlhelp32.h>
 #include <unknwn.h>
