@@ -14,6 +14,8 @@ iohook_lib = static_library(
         'iohook.c',
         'iohook.h',
         'irp.h',
+        'socket.c',
+        'socket.h',
     ],
 )
 
