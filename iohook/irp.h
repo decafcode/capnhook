@@ -42,6 +42,7 @@ struct irp {
     size_t next_handler;
     HANDLE fd;
     OVERLAPPED *ovl;
+    LPOVERLAPPED_COMPLETION_ROUTINE completion;
     struct const_iobuf write;
     struct iobuf read;
 
