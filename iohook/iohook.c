@@ -11,7 +11,8 @@
 #include "iohook/chain.h"
 #include "iohook/file.h"
 #include "iohook/iohook.h"
-#include "iohook/socket.h"
+#include "iohook/socket-io.h"
+#include "iohook/socket-mgmt.h"
 
 static void iohook_init(void);
 static HRESULT iohook_invoke_real(struct irp *irp);
@@ -57,7 +58,8 @@ static void iohook_init(void)
 
     iohook_chain_init();
     iohook_file_hook_apis();
-    iohook_socket_hook_apis();
+    iohook_socket_io_hook_apis();
+    iohook_socket_mgmt_hook_apis();
     iohook_chain_push_handler(iohook_invoke_real);
     iohook_initted = true;
 }
