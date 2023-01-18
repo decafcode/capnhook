@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define SVL_THREAD_NAMING_EXCEPTION 0x406D1388
+
 static HRESULT debug_wstr(HANDLE process, const OUTPUT_DEBUG_STRING_INFO *odsi);
 static bool debug_str(HANDLE process, const OUTPUT_DEBUG_STRING_INFO *odsi);
 
@@ -64,6 +66,13 @@ HRESULT debug_main(HANDLE process, uint32_t pid)
             status = DBG_CONTINUE;
         } else {
             status = DBG_EXCEPTION_NOT_HANDLED;
+        }
+
+        // Handle special cases
+        if (ev.dwDebugEventCode == EXCEPTION_DEBUG_EVENT) {
+            if (ev.u.Exception.ExceptionRecord.ExceptionCode == SVL_THREAD_NAMING_EXCEPTION) {
+                status = DBG_CONTINUE;
+            }
         }
 
         ok = ContinueDebugEvent(ev.dwProcessId, ev.dwThreadId, status);
